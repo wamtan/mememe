@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>疑似AR+撮影</title>
+
+  <script type="module"
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: #000;
+    }
+
+    #camera {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    model-viewer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      z-index: 1;
+    }
+
+    #captureBtn {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 28px;
+      border: none;
+      border-radius: 999px;
+      background: #0033ff;
+      color: #fff;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
+
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+    #flash.active {
+      opacity: 1;
+      transition: opacity 0.1s;
+    }
+  </style>
+</head>
+
+<body>
+
+  <video id="camera" autoplay playsinline muted></video>
+
+  <model-viewer
+    id="mv"
+    src="character.glb"
+    camera-controls
+    auto-rotate
+    shadow-intensity="1"
+    exposure="1"
+    alt="キャラクター">
+  </model-viewer>
+
+  <button id="captureBtn">撮影</button>
+
+  <div id="flash"></div>
+
+  <script>
+    // =========================
+    // カメラ起動
+    // =========================
+    const video = document.getElementById('camera');
+
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    }).then(stream => {
+      video.srcObject = stream;
+    }).catch(err => {
+      alert("カメラが使用できません: " + err);
+    });
+
+    // =========================
+    // 撮影処理
+    // =========================
+    const btn = document.getElementById('captureBtn');
+    const flash = document.getElementById('flash');
+
+    btn.addEventListener('click', async () => {
+	  btn.style.display = 'none';
+
+	  const mv = document.getElementById('mv');
+      const canvas3D = mv.shadowRoot.querySelector('canvas');
+
+      if (!canvas3D) {
+        alert("3Dの描画が取得できません");
+		btn.style.display = 'hidden';
+        return;
+      }
+
+      // 合成用canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.drawImage(video, 0, 0, width, height);
+
+      ctx.drawImage(canvas3D, 0, 0, width, height);
+
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 100);
+
+	  const url = canvas.toDataURL('image/png');
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ar_capture.png';
+      a.click();
+
+
+	  setTimeout(() => {
+	  btn.style.display = 'block';
+	  }, 100);
+	});
+  </script>
+
+</body>
+</html>
